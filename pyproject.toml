@@ -1,0 +1,17 @@
+[project]
+name = "larp-finance"
+version = "0.1.0"
+description = "A soon to be website for financial larpers."
+readme = "README.md"
+authors = [
+    { name = "Christian Pahl", email = "pahlchristian634@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+larp-finance = "larp_finance:main"
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
