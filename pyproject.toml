@@ -7,7 +7,9 @@ authors = [
     { name = "Christian Pahl", email = "pahlchristian634@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "fastapi>=0.162.0",
+]
 
 [project.scripts]
 larp-finance = "larp_finance:main"
