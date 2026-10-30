@@ -21,3 +21,9 @@ Added fastapi and wrote at least till the root endpoint, encountered the first p
 Confirmed that the root endpoint was working as well as fastAPI and uvicorn working properly. Run it through local host with uvicorn, access it with your browser in "http://127.0.0.1:8000". Swagger UI available via "http://127.0.0.1:8000/docs".
 
 Signed: Second Commit "Root Endpoint Created and Dependencies Added"
+
+Got it out of the cloud space directory as it seems to interfere with the virtual environment that's been set up. Deleted the old .venv to avoid pathing problems and ran uv sync anew to recreate a new .venv and restore the project's dependencies from before the migration. 
+
+Despite uvicorn working as intented inside the cloud space directory, the initial installation failed to completely record it as a project dependency. After migrating and recreating the virtual environment outside the cloud however, said problem was solved. 
+
+Signed: Third Commit "Chore: Restore Environment and Fix Uvicorn Dependency"
