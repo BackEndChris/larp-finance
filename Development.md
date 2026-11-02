@@ -51,3 +51,11 @@ Since we're already at configuring and creating databases, the project shall now
 Configuration using alembic was successful. The users table has now been created in the database without being configured directly which is really convenient all the more for future configurations in the database and code that affects said database. 
 
 Signed: 5th Commit "Feat: Add User ORM model and initial Alembic migration"
+
+Enough configurations have been set in the database section, moving onto finally working our way into user registration. Added schemas.py for API data validation, to ensure people are gonna be writing the right inputs and if not, ideally, the request shouldn't go through. Security.py for incorporating password hashing using Argon2id through pwdlib and finally adding the user registration endpoint as well as testing if everything works via Swagger UI. Password hashing in particular has been verified directly in PostgreSQL for safety purposes.   
+
+Added some more database related configurations as well for future convenience like get_db() to manage database sessions. 
+
+For now the registration endpoint checks for duplicate usernames and emails, returning HTTP 409 whenever necessary and HTTP 422 if users put invalid email inputs instead. If more checks would be deemed necessary, they will probably be added later. 
+
+Signed: 6th Commit "Feat: Implement User Registration and Password Hashing"
