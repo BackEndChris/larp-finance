@@ -41,3 +41,13 @@ Onto testing the database connection, adding python-dotenv. Creating a separate 
 Testing worked, so: Database has been created, connected to python environment using SQLAlchemy and Psycopg then tested.
 
 Signed: 4th Commit "Chore: Establish and verify PostgreSQL connection"
+
+Since testing's been done and connection has been established to be working, it's time to move the database work inside the source code right beside main.py. Database.py is gonna be the engine creator that lets this project's code communicate with our database. Later we can then improve configurations but for now establishing the connection is enough. 
+
+Next thing to work on would be helping the database know the data that it should store. Anything that would be important and related to the user, since making it work is the priority adding the app specific features like portfolios or balances shall be instead added later on. Incorporating ORM for convenience instead of sticking to direct SQL queries that would have to be configured on the database itself. 
+
+Since we're already at configuring and creating databases, the project shall now be incorporating Alembic as well to keep track of changes to the database structure. 
+
+Configuration using alembic was successful. The users table has now been created in the database without being configured directly which is really convenient all the more for future configurations in the database and code that affects said database. 
+
+Signed: 5th Commit "Feat: Add User ORM model and initial Alembic migration"
