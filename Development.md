@@ -63,3 +63,9 @@ Signed: 6th Commit "Feat: Implement User Registration and Password Hashing"
 Onto the next thing, if users can register. Then users should be able to log in. Configured schemas to accept UserLogin data entries and tested if said endpoint is working properly. It worked properly, endpoint confirmed to be verifying UserName and hashed password properly. Next was JWT implementation to grant access tokens to each subsequent unique user per log in session. Really important for user specific tasks and requests that are planned. JWT implementation, tested. Everything was working. 
 
 Signed: 7th Commit "Feat: Login Auth and JWT Token Generation"
+
+Added authentication that makes use of the previously added JWT implementation as well as a new user specific GET endpoint that tests if the JWT implementation and log in functions are working properly. Dependency injection through reusable get_current_user() has also been implemented in auth.py so that secure endpoints can reuse the same authetication logic. 
+
+The JWT verification for now verifies the JWT signature using a pre composed key, checks if the token hasn't expired, extracts the user's ID and retrieves the matching account from PostgreSQL. 
+
+Signed: 8th Commit "Feat: Added JWT Verification and Protected User Endpoint"

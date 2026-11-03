@@ -8,6 +8,8 @@ from larp_finance.models import User
 from larp_finance.schemas import UserCreate, UserResponse, UserLogin
 from larp_finance.security import hash_password, verify_password, create_access_token
 
+from larp_finance.auth import get_current_user
+
 
 
 
@@ -90,3 +92,9 @@ def login(
         "access_token": access_token,
         "token_type": "bearer",
     }
+
+@app.get("/users/me", response_model=UserResponse)
+def read_current_user(
+    current_user: User = Depends(get_current_user),
+):
+    return current_user
