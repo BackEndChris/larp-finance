@@ -59,3 +59,7 @@ Added some more database related configurations as well for future convenience l
 For now the registration endpoint checks for duplicate usernames and emails, returning HTTP 409 whenever necessary and HTTP 422 if users put invalid email inputs instead. If more checks would be deemed necessary, they will probably be added later. 
 
 Signed: 6th Commit "Feat: Implement User Registration and Password Hashing"
+
+Onto the next thing, if users can register. Then users should be able to log in. Configured schemas to accept UserLogin data entries and tested if said endpoint is working properly. It worked properly, endpoint confirmed to be verifying UserName and hashed password properly. Next was JWT implementation to grant access tokens to each subsequent unique user per log in session. Really important for user specific tasks and requests that are planned. JWT implementation, tested. Everything was working. 
+
+Signed: 7th Commit "Feat: Login Auth and JWT Token Generation"

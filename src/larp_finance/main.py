@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from larp_finance.database import get_db
 from larp_finance.models import User
-from larp_finance.schemas import UserCreate, UserResponse
-from larp_finance.security import hash_password
+from larp_finance.schemas import UserCreate, UserResponse, UserLogin
+from larp_finance.security import hash_password, verify_password, create_access_token
+
+
 
 
 app = FastAPI()
@@ -61,3 +63,30 @@ def register(
     db.refresh(new_user)
 
     return new_user
+
+@app.post("/login")
+def login(
+    credentials: UserLogin,
+    db: Session = Depends(get_db),
+):
+    user = db.scalar(
+        select(User).where(
+            User.username == credentials.username
+        )
+    )
+
+    if user is None or not verify_password(
+        credentials.password,
+        user.password_hash
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+        )
+
+    access_token = create_access_token(user.id)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
