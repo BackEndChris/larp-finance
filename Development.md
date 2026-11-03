@@ -69,3 +69,15 @@ Added authentication that makes use of the previously added JWT implementation a
 The JWT verification for now verifies the JWT signature using a pre composed key, checks if the token hasn't expired, extracts the user's ID and retrieves the matching account from PostgreSQL. 
 
 Signed: 8th Commit "Feat: Added JWT Verification and Protected User Endpoint"
+
+Next thing is incorporating pytest into the project. The features are adding up and testing things manually one by one are getting inconvenient and impractical. Since we don't want pytest or any of our automated testing messing up with the original database, database isolation will also be pulling through.
+
+Tests are done, everything's successful and ready to be committed again. A whole new folder "Tests" has also been created to sort out the tests and distribute things properly. Same thing is gonna be happening with main.py later since it's doing too much right now but for now this is fine. 
+
+The testing infrastructure uses dependency injection to work through or override the previously set up get_db(), so that the operations can be redirected to the test database instead. Rollbacks have also been introduced so that not every test would create a random test user to stay as a consequence of testing the endpoints or associated features. 
+
+Tests, have also been added for registration, login and JWT authentication. Succesful registrations, duplicate usernames, invalid inputs and a lot more have been tested. So far all 14 tests passed.
+
+This sorts out the project's first automated regression test suite. There are still probably improvements that could be made and tests I could've forgotten but those could be added along the way. At the very least the initial testing infrastructure is now functional. 
+
+Signed: 9th Commit "Test: Added Isolated Authentication Tests with Pytest"
