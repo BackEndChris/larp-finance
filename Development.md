@@ -93,3 +93,17 @@ Signed: 10th Commit "CI: Add GitHub Actions Pytest Workflow"
 Hiccup on and about detected, configured ci.yml in hopes of fixing the issue. 
 
 Signed: 11th Commit "Fix: Pin Setup-uv action to valid release"
+
+Issue, fixed. Didn't want to document it till the fix was surely dealt with. The initial GitHub Actions run failed because the specified setup-uv action version couldn't be resolved. Pinning the action to a valid release before pushing the correction to GitHub cleaned the issue. 
+
+The following CI run succeeded, the workflow can execute outside the local Windows environment. 
+
+CI should now be functional and will automatically validate future changes pushed to the main branch. 
+
+Onto the next thing, Portfolio Management. Got the new endpoint added and working, now users who register automatically get 10,000 USD worth of paper money and are able to see this through the new GET endpoint. 
+
+An alembic migration was also taken care of to sync in the new configs needed by our database. 1 user, 1 portfolio. Atomic registration has also been introduced for smooth registrations, using db.flush() and db.commit(), we allow account and portfolio creation to be one database transaction, if something goes wrong somewhere, the whole transaction gets rollbacked, not leaving any half finished traces. 
+
+Subsequently, 3 new automated portfolio tests have also been naturally created, bringing the total tests to 17. All of which have succeeded so far. 
+
+Signed: 12th Commit: "Feat: Added Portfolio Model and Automatic Portfolio Creation"

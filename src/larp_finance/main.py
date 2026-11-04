@@ -4,8 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from larp_finance.database import get_db
-from larp_finance.models import User
-from larp_finance.schemas import UserCreate, UserResponse, UserLogin
+from larp_finance.models import User, Portfolio
+from larp_finance.schemas import UserCreate, UserResponse, UserLogin, PortfolioResponse
 from larp_finance.security import hash_password, verify_password, create_access_token
 
 from larp_finance.auth import get_current_user
@@ -54,7 +54,15 @@ def register(
     db.add(new_user)
 
     try:
+        db.flush()
+
+        new_portfolio = Portfolio(
+            user_id=new_user.id,
+        )
+
+        db.add(new_portfolio)
         db.commit()
+
     except IntegrityError:
         db.rollback()
         raise HTTPException(
@@ -98,3 +106,22 @@ def read_current_user(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
+
+@app.get("/portfolio/me", response_model=PortfolioResponse)
+def get_my_portfolio(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    portfolio = db.scalar(
+        select(Portfolio).where(
+            Portfolio.user_id == current_user.id
+        )
+    )
+
+    if portfolio is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Portfolio not found",
+        )
+
+    return portfolio

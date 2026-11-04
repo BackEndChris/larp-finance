@@ -1,4 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
+from decimal import Decimal
+from datetime import datetime
 
 
 class UserCreate(BaseModel):
@@ -14,6 +16,16 @@ class UserResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
 class UserLogin(BaseModel):
     username: str
     password: str
+
+
+class PortfolioResponse(BaseModel):
+    id: int
+    user_id: int
+    cash_balance: Decimal
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
