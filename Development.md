@@ -81,3 +81,11 @@ Tests, have also been added for registration, login and JWT authentication. Succ
 This sorts out the project's first automated regression test suite. There are still probably improvements that could be made and tests I could've forgotten but those could be added along the way. At the very least the initial testing infrastructure is now functional. 
 
 Signed: 9th Commit "Test: Added Isolated Authentication Tests with Pytest"
+
+Since the tests have now been incorporated into the project, before pushing everything online to Github, might as well add CI/CD into the project. First CI using GitHub Actions for convenience. Instead of having to manually run pytest every time changes are made, Github should automatically run the tests whenever changes are pushed to the main. Extremely helpful as the project grows and extremely handy our plans for deployment. 
+
+Created the new GitHub repo and connected it to the already existing local Git repo. Added ci.yml to configure an Ubuntu environment, temporary PostgreSQL database and automated pytest execution. Separate JWT secret through GitHub's repo secrets also added. 
+
+The goal is to make sure that the already existing 14 automated tests can run without any troubles outside the local development environment. This commit is pre-testing, if things go as planned then it shall be documented through the 11th Commit.
+
+Signed: 10th Commit "CI: Add GitHub Actions Pytest Workflow"
