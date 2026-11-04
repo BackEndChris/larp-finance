@@ -89,3 +89,7 @@ Created the new GitHub repo and connected it to the already existing local Git r
 The goal is to make sure that the already existing 14 automated tests can run without any troubles outside the local development environment. This commit is pre-testing, if things go as planned then it shall be documented through the 11th Commit.
 
 Signed: 10th Commit "CI: Add GitHub Actions Pytest Workflow"
+
+Hiccup on and about detected, configured ci.yml in hopes of fixing the issue. 
+
+Signed: 11th Commit "Fix: Pin Setup-uv action to valid release"
