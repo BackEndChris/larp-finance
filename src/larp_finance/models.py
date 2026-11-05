@@ -1,8 +1,9 @@
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import DateTime, String, func, ForeignKey, Numeric, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
-from decimal import Decimal
+
 
 from larp_finance.database import Base
 
@@ -114,5 +115,66 @@ class Holding(Base):
         CheckConstraint(
             "avg_cost >= 0",
             name="ck_holding_avg_cost",
+        ),
+    )
+
+
+class Trade(Base):
+    __tablename__ = "trades"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    portfolio_id: Mapped[int] = mapped_column(
+        ForeignKey("portfolios.id"),
+        nullable=False,
+    )
+
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id"),
+        nullable=False,
+    )
+
+    trade_type: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+    )
+
+    quantity: Mapped[Decimal] = mapped_column(
+        Numeric(28, 12),
+        nullable=False,
+    )
+
+    unit_price: Mapped[Decimal] = mapped_column(
+        Numeric(20, 8),
+        nullable=False,
+    )
+
+    total_amount: Mapped[Decimal] = mapped_column(
+        Numeric(28, 8),
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "trade_type IN ('buy', 'sell')",
+            name="ck_trade_type",
+        ),
+        CheckConstraint(
+            "quantity > 0",
+            name="ck_trade_quantity",
+        ),
+        CheckConstraint(
+            "unit_price > 0",
+            name="ck_trade_unit_price",
+        ),
+        CheckConstraint(
+            "total_amount > 0",
+            name="ck_trade_total_amount",
         ),
     )

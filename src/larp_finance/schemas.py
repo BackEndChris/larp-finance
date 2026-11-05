@@ -44,4 +44,24 @@ class AssetQuoteResponse(BaseModel):
     currency: str
     price: Decimal
     as_of: str | None
-    
+
+class TradeBuyRequest(BaseModel):
+    asset_id: int = Field(gt=0)
+    quantity: Decimal = Field(
+        gt=0,
+        max_digits=28,
+        decimal_places=12,
+    )
+
+class TradeResponse(BaseModel):
+    id: int
+    portfolio_id: int
+    asset_id: int
+    trade_type: str
+    quantity: Decimal
+    unit_price: Decimal
+    total_amount: Decimal
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+

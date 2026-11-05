@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from larp_finance.models import Asset
-from larp_finance import main
+from larp_finance.routers import assets as assets_router
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def test_get_asset_quote(client, sample_asset, monkeypatch):
             "as_of": "2026-11-04",
         }
 
-    monkeypatch.setattr(main, "get_asset_quote", fake_quote)
+    monkeypatch.setattr(assets_router, "get_asset_quote", fake_quote)
 
     response = client.get("/assets/AAPL/quote")
 
@@ -65,7 +65,7 @@ def test_market_data_failure_returns_503(
     def fake_quote(symbol, asset_type):
         raise RuntimeError("Provider unavailable")
 
-    monkeypatch.setattr(main, "get_asset_quote", fake_quote)
+    monkeypatch.setattr(assets_router, "get_asset_quote", fake_quote)
 
     response = client.get("/assets/AAPL/quote")
 

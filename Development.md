@@ -131,3 +131,18 @@ The integration of the asset catalog and market data into FastAPI has also been 
 Further improvements will probably include more robust caching, provider error handling and eventually Redis. But for now, the project shall move toward implementing virtual buying and selling. 
 
 Signed: 14th Commit "Feat: Add Cached Market Data and Asset Endpoints"
+
+While working on the virtual trading system, I realized that the main.py file was already becoming too cluttered and responsible for too many things at once, hence the files and code was reorganized for continuous future configurations and easier navigation. 
+
+Back to the virtual trading system, first thing was to create a trade model to keep records of every purchase or sale, separate from the user's current holdings. Added the necessary constraints as well as foreign keys then generated and applied the 4th alembic migration. Implemented PostgreSQL row locking to protect against simultaneous purchases, alongside weighted-average cost calculations for repeated purchases of the same asset.
+
+In terms of endpoints, the first buying endpoint has also been created. The endpoint retrieves market prices through the already existing Alpha Vantage integration, ensures the user has enough virtual cash, updates their holdings and then records the transaction. All database changes are committed together. 
+
+Added five automated trading tests covering successful purchases, insufficient funds, repeated purchases of the same asset, database rollback and purchases below the minimum amount (minimum amount set to 1 dollar). Pytest and monkeypatch have been used to simulate market prices without making real Alpha Vantage requests.
+
+A lot was done and reorganized but that about sums up the important things for this commit. I was having troubles deciding where and when to commit this time around so I'm glad that everything worked out so far. 
+
+Most of the code won't and don't have comments but if you see some that do have, then that would be for additional future self guard for code that took a bit longer to digest. Some work also remains unfinished in regards to the buying system, which will of course be polished before moving on to selling and trade history endpoints. 
+
+Signed: 15th Commit "Feat: Implement Virtual Buying and Refactor Backend Architecture"
+
