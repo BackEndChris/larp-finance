@@ -107,3 +107,15 @@ An alembic migration was also taken care of to sync in the new configs needed by
 Subsequently, 3 new automated portfolio tests have also been naturally created, bringing the total tests to 17. All of which have succeeded so far. 
 
 Signed: 12th Commit: "Feat: Added Portfolio Model and Automatic Portfolio Creation"
+
+Going forward to Asset and Holding management. Added 2 new ORM models: Asset and Holding. The former to represent the stocks and coins (cryptocurrencies) supported by the simulator and the latter representing the assets owned by individual users. 
+
+To apply this, a 3rd migration was applied and implemented. Added 7 initial assets as well to the database: AAPL, MSFT, NVDA, TSLA, BTC, ETH, and SOL. 
+
+At this point the train of thought also lead me to incorporate the first external API integration. Decided to use Alpha Vantage this time around, providing both stock and cryptocurrency market data. 
+
+Tests and trials have been done with the API key. Relating endpoints, database and functions seem to be working fine. Tests will be added later however to be more sure. 
+
+A problem however was noticed from using the free API key provided by Alpha Vantage, 25 requests seem to be pretty tight, considering that this project is meant to be deployed. Will a paid API key be needed in the future? We don't know yet, however the next plan is to introduce caching to at least try to reduce usage of the limited 25 requests. 
+
+Signed 13th Commit: "Feat: Added Asset Models and Alpha Vantage Market Data Integration"
