@@ -29,3 +29,19 @@ class PortfolioResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+class AssetResponse(BaseModel):
+    id: int
+    symbol: str
+    name: str
+    asset_type: str
+
+    model_config = {"from_attributes": True}
+
+class AssetQuoteResponse(BaseModel):
+    symbol: str
+    asset_type: str
+    currency: str
+    price: Decimal
+    as_of: str | None
+    

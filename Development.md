@@ -119,3 +119,15 @@ Tests and trials have been done with the API key. Relating endpoints, database a
 A problem however was noticed from using the free API key provided by Alpha Vantage, 25 requests seem to be pretty tight, considering that this project is meant to be deployed. Will a paid API key be needed in the future? We don't know yet, however the next plan is to introduce caching to at least try to reduce usage of the limited 25 requests. 
 
 Signed 13th Commit: "Feat: Added Asset Models and Alpha Vantage Market Data Integration"
+
+Caching implementation was successful. Since the free API key only allows 25 requests per day, we incorporated an in-memory caching mechanism with a TTL of 60 minutes. The aforementioned TTL can and could be changed depending on how we see it working in the future but it's set to 60 minutes for now. 
+
+Instead of repeatedly trying to request the same type of information from Alpha Vantage, the caching system should be able to reduce unnecessary access to the API key and give out stored cached information if available. For added security, rate limiting is also being considered at the moment but for this specific situation caching seems to be enough for now. 
+
+Added automated tests as well using pytest and monkeypatch to simulate market data without making actual Alpha Vantage requests. Cache hits, misses, expiration etc. All new tests passed, bringing the total to 21. 
+
+The integration of the asset catalog and market data into FastAPI has also been successful, added the new endpoints that are responsible for each and tested via Swagger UI. Both have been confirmed to be working not only in pytest (4 more tests, giving a total of 25 tests) but hands on as well. 
+
+Further improvements will probably include more robust caching, provider error handling and eventually Redis. But for now, the project shall move toward implementing virtual buying and selling. 
+
+Signed: 14th Commit "Feat: Add Cached Market Data and Asset Endpoints"

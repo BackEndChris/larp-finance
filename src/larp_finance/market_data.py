@@ -4,16 +4,27 @@ import httpx
 from dotenv import load_dotenv
 
 from decimal import Decimal
+from time import monotonic
+from threading import Lock
 
 
 load_dotenv()
 
-ALPHA_VANTAGE_API_KEY = os.environ["ALPHA_VANTAGE_API_KEY"]
+ALPHA_VANTAGE_API_KEY = os.getenv("ALPHA_VANTAGE_API_KEY")
 
 BASE_URL = "https://www.alphavantage.co/query"
 
+CACHE_TTL_SECONDS = 3600
+
+quote_cache = {}
+cache_lock = Lock()
+
 
 def get_stock_quote(symbol: str) -> dict:
+
+    if not ALPHA_VANTAGE_API_KEY:
+        raise RuntimeError("ALPHA_VANTAGE_API_KEY is not configured")
+    
     params = {
         "function": "GLOBAL_QUOTE",
         "symbol": symbol,
@@ -51,6 +62,8 @@ def get_stock_quote(symbol: str) -> dict:
 
 
 def get_crypto_quote(symbol: str) -> dict:
+    if not ALPHA_VANTAGE_API_KEY:
+        raise RuntimeError("ALPHA_VANTAGE_API_KEY is not configured")
     params = {
         "function": "CURRENCY_EXCHANGE_RATE",
         "from_currency": symbol,
@@ -87,11 +100,35 @@ def get_crypto_quote(symbol: str) -> dict:
         "as_of": exchange_rate.get("6. Last Refreshed"),
     }
 
+
 def get_asset_quote(symbol: str, asset_type: str) -> dict:
-    if asset_type == "stock":
-        return get_stock_quote(symbol)
+    symbol = symbol.upper()
+    asset_type = asset_type.lower()
 
-    if asset_type == "crypto":
-        return get_crypto_quote(symbol)
+    if asset_type not in ("stock", "crypto"):
+        raise ValueError(f"Unsupported asset type: {asset_type}")
 
-    raise ValueError(f"Unsupported asset type: {asset_type}")
+    cache_key = (symbol, asset_type)
+
+    with cache_lock:
+        current_time = monotonic()
+
+        cached_entry = quote_cache.get(cache_key)
+
+        if cached_entry is not None:
+            quote, expires_at = cached_entry
+
+            if current_time < expires_at:
+                return quote.copy()
+
+        if asset_type == "stock":
+            quote = get_stock_quote(symbol)
+        else:
+            quote = get_crypto_quote(symbol)
+
+        quote_cache[cache_key] = (
+            quote.copy(),
+            monotonic() + CACHE_TTL_SECONDS,
+        )
+
+        return quote.copy()

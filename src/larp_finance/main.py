@@ -4,13 +4,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from larp_finance.database import get_db
-from larp_finance.models import User, Portfolio
-from larp_finance.schemas import UserCreate, UserResponse, UserLogin, PortfolioResponse
+from larp_finance.models import User, Portfolio, Asset
+from larp_finance.schemas import UserCreate, UserResponse, UserLogin, PortfolioResponse, AssetResponse, AssetQuoteResponse
 from larp_finance.security import hash_password, verify_password, create_access_token
 
 from larp_finance.auth import get_current_user
-
-
+from larp_finance.market_data import get_asset_quote
+import httpx
 
 
 app = FastAPI()
@@ -125,3 +125,46 @@ def get_my_portfolio(
         )
 
     return portfolio
+
+@app.get("/assets", response_model=list[AssetResponse])
+def list_assets(db: Session = Depends(get_db)):
+    assets = db.scalars(
+        select(Asset).order_by(Asset.symbol)
+    ).all()
+
+    return assets
+
+
+@app.get(
+    "/assets/{symbol}/quote",
+    response_model=AssetQuoteResponse,
+)
+def get_quote(
+    symbol: str,
+    db: Session = Depends(get_db),
+):
+    symbol = symbol.upper()
+
+    asset = db.scalar(
+        select(Asset).where(Asset.symbol == symbol)
+    )
+
+    if asset is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Asset not found",
+        )
+
+    try:
+        quote = get_asset_quote(
+            asset.symbol,
+            asset.asset_type,
+        )
+
+    except (RuntimeError, httpx.HTTPError, ValueError):
+        raise HTTPException(
+            status_code=503,
+            detail="Market data temporarily unavailable",
+        )
+
+    return quote
