@@ -146,3 +146,6 @@ Most of the code won't and don't have comments but if you see some that do have,
 
 Signed: 15th Commit "Feat: Implement Virtual Buying and Refactor Backend Architecture"
 
+Removed the content within one of the pre existing __init__ files, minor chore.  
+
+Signed: 16th Commit "Chore: Remove Unused Console Entry Point"
