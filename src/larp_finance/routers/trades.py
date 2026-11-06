@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, status
+
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.orm import Session
 
 from larp_finance.database import get_db
@@ -18,6 +19,11 @@ router = APIRouter()
 )
 def buy_asset(
     trade_data: TradeBuyRequest,
+    idempotency_key: str = Header(
+        min_length=1,
+        max_length=64,
+        alias="Idempotency-Key",
+    ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -25,4 +31,5 @@ def buy_asset(
         trade_data=trade_data,
         user_id=current_user.id,
         db=db,
+        idempotency_key=idempotency_key,
     )

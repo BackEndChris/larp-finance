@@ -1,5 +1,7 @@
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+from datetime import date, datetime, timedelta, timezone
+
 import httpx
 
 from fastapi import HTTPException
@@ -25,11 +27,102 @@ def fits_numeric(
     return -max_value < value < max_value
 
 
+def validate_quote_freshness(quote: dict) -> None:
+    as_of = quote.get("as_of")
+    asset_type = quote.get("asset_type")
+
+    if not isinstance(as_of, str):
+        raise ValueError("Missing quote timestamp")
+
+    now = datetime.now(timezone.utc)
+
+    if asset_type == "stock":
+        try:
+            trading_day = date.fromisoformat(as_of)
+        except ValueError:
+            raise ValueError("Invalid stock quote date")
+
+        age = now.date() - trading_day
+
+        if age.days < 0 or age.days > 5:
+            raise ValueError("Stock quote is outdated")
+
+    elif asset_type == "crypto":
+        try:
+            refreshed_at = datetime.fromisoformat(as_of)
+        except ValueError:
+            raise ValueError("Invalid crypto quote timestamp")
+
+        if refreshed_at.tzinfo is None:
+            refreshed_at = refreshed_at.replace(tzinfo=timezone.utc)
+
+        age = now - refreshed_at
+
+        if age < -timedelta(minutes=5):
+            raise ValueError("Crypto quote is future-dated")
+
+        if age > timedelta(hours=2):
+            raise ValueError("Crypto quote is outdated")
+
+    else:
+        raise ValueError("Unsupported asset type")
+
+
+
+def find_existing_trade(
+    db: Session,
+    portfolio_id: int,
+    idempotency_key: str,
+    trade_data: TradeBuyRequest,
+) -> Trade | None:
+    existing_trade = db.scalar(
+        select(Trade).where(
+            Trade.portfolio_id == portfolio_id,
+            Trade.idempotency_key == idempotency_key,
+        )
+    )
+
+    if existing_trade is None:
+        return None
+
+    if (
+        existing_trade.trade_type != "buy"
+        or existing_trade.asset_id != trade_data.asset_id
+        or existing_trade.quantity != trade_data.quantity
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Idempotency key already used for a different request",
+        )
+
+    return existing_trade    
+
+
 def execute_buy(
     trade_data: TradeBuyRequest,
     user_id: int,
     db: Session,
+    idempotency_key: str | None = None,
 ) -> Trade:
+    
+    if idempotency_key is not None:
+        existing_trade = db.scalar(
+            select(Trade)
+            .join(Portfolio, Trade.portfolio_id == Portfolio.id)
+            .where(
+                Portfolio.user_id == user_id,
+                Trade.idempotency_key == idempotency_key,
+            )
+        )
+
+        if existing_trade is not None:
+            return find_existing_trade(
+                db,
+                existing_trade.portfolio_id,
+                idempotency_key,
+                trade_data,
+            )
+
     # Step 1: Find the requested asset.
     asset = db.get(Asset, trade_data.asset_id)
 
@@ -42,6 +135,9 @@ def execute_buy(
     # Step 2: Retrieve the market price.
     try:
         quote = get_asset_quote(asset.symbol, asset.asset_type)
+
+        validate_quote_freshness(quote)
+        
         unit_price = Decimal(str(quote["price"]))
 
         if quote["currency"] != "USD":
@@ -110,6 +206,20 @@ def execute_buy(
             status_code=404,
             detail="Portfolio not found",
         )
+
+
+    if idempotency_key is not None:
+        existing_trade = find_existing_trade(
+            db,
+            portfolio.id,
+            idempotency_key,
+            trade_data,
+        )
+
+        if existing_trade is not None:
+            return existing_trade
+
+
 
     # Step 5: Check available funds.
     if portfolio.cash_balance < total_amount:
@@ -183,6 +293,7 @@ def execute_buy(
         quantity=trade_data.quantity,
         unit_price=unit_price,
         total_amount=total_amount,
+        idempotency_key=idempotency_key,
     )
 
     db.add(new_trade)

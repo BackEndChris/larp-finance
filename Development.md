@@ -149,3 +149,19 @@ Signed: 15th Commit "Feat: Implement Virtual Buying and Refactor Backend Archite
 Removed the content within one of the pre existing __init__ files, minor chore.  
 
 Signed: 16th Commit "Chore: Remove Unused Console Entry Point"
+
+Followed up on the virtual buying system's improvement. Focusing on reliability and preventing unintended transactions. 
+
+Implemented quote freshness validation to prevent purchases using outdated market data. For stock quotes we have a five day allowance and for cryptocurrency it's no older than 2 hours. Added tests to verify both.
+
+PostgreSQL's row locking has also been tested via ThreadPoolExecutor and separate database sessions to imitate or simulate simultaneous purchases. The tests confirmed that competing purchases cannot overspend the same portfolio balance under the aforementioned tested conditions 
+
+One major addition as well was idempotency, preventing duplicate purchases caused by repeated requests or network retries which is gonna be very helpful in the future. Added an idempotency_key column to the trade model, unique constraint before applying the fifth alembic migration. The buying endpoint now requires an Idempotency-Key header, returning the original trade for matching retries and rejecting conflicting requests. 
+
+An issue has been encountered as well where nine tests failed due to the test database not receiving the new migration. The lack of foresight in regards to the difference of the test database and real database mainly caused the issue, solved it by manually updating the test database. 
+
+Added more automated tests covering quote freshness, concurrency, idempotency conflicts and missing headers. All 39 tests passed so far. 
+
+Improvements could be made, specifically on automated test database migrations and perhaps error handling but those can be configured on a later date. Next on the list for now will be virtual selling and trade history. 
+
+Signed: 17 Commit "Feat: Improve Trading Reliability and Implement Idempotency"

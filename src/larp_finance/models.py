@@ -160,6 +160,11 @@ class Trade(Base):
         nullable=False,
     )
 
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+
     __table_args__ = (
         CheckConstraint(
             "trade_type IN ('buy', 'sell')",
@@ -176,5 +181,10 @@ class Trade(Base):
         CheckConstraint(
             "total_amount > 0",
             name="ck_trade_total_amount",
+        ),
+        UniqueConstraint(
+            "portfolio_id",
+            "idempotency_key",
+            name="uq_trade_portfolio_idempotency_key",
         ),
     )
