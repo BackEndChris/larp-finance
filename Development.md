@@ -179,3 +179,17 @@ All 46 automated tests so far passed as well. The basic buying, holding, selling
 Coming right up would be Docker and Docker Compose, followed by Redis and Celery for background processing. 
 
 Signed: 18th Commit "Feat: Implement Virtual Selling, Trade History and Automated Test Migrations"
+
+Started with Docker and Docker Compose to make the project's development environment more reproducible and easier to set up on other machines. 
+
+Created a Dockerfile and used uv to package the backend and its dependencies, added a .dockerignore file as well to exclude unnecessary files and sensitive information. 
+
+Also implemented Docker Compose with separate FastAPI and PostgreSQL services while also successfully applying all five alembic migrations inside Docker and that all important function like user registration, automatic portfolio creation etc. still work even after restarting the containers. 
+
+Also introduced a specialized initialization service that would automatically apply alembic migrations and seeds assets before FastAPI starts. Encountered a tiny issue with Docker Compose along the way, but it was just syntax and everything worked fine after the fix. 
+
+A fresh Docker Compose project with its own database and volume were also confirmed to have automatically working migrations, asset seeding and application start up. 
+
+The backend should now be possible to initialize through a single Docker Compose command, as long as the required environment variables are configured. Next up should be Redis and Celery for background processing and investment simulations. 
+
+Signed: 19th Commit "Feat: Containerize Backend with Docker and Automate Database Initialization"
