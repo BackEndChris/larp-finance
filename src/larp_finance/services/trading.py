@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from larp_finance.models import Asset, Portfolio, Holding, Trade
 from larp_finance.market_data import get_asset_quote
-from larp_finance.schemas import TradeBuyRequest
+from larp_finance.schemas import TradeBuyRequest, TradeSellRequest
 
 
 def fits_numeric(
@@ -68,12 +68,12 @@ def validate_quote_freshness(quote: dict) -> None:
         raise ValueError("Unsupported asset type")
 
 
-
 def find_existing_trade(
     db: Session,
     portfolio_id: int,
     idempotency_key: str,
-    trade_data: TradeBuyRequest,
+    trade_data: TradeBuyRequest | TradeSellRequest,
+    trade_type: str = "buy",
 ) -> Trade | None:
     existing_trade = db.scalar(
         select(Trade).where(
@@ -86,7 +86,7 @@ def find_existing_trade(
         return None
 
     if (
-        existing_trade.trade_type != "buy"
+        existing_trade.trade_type != trade_type
         or existing_trade.asset_id != trade_data.asset_id
         or existing_trade.quantity != trade_data.quantity
     ):
@@ -95,7 +95,7 @@ def find_existing_trade(
             detail="Idempotency key already used for a different request",
         )
 
-    return existing_trade    
+    return existing_trade
 
 
 def execute_buy(
@@ -299,6 +299,192 @@ def execute_buy(
     db.add(new_trade)
 
     # Step 10: Commit all changes atomically.
+    try:
+        db.commit()
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Trade could not be completed",
+        )
+
+    db.refresh(new_trade)
+
+    return new_trade
+
+
+def execute_sell(
+    trade_data: TradeSellRequest,
+    user_id: int,
+    db: Session,
+    idempotency_key: str,
+) -> Trade:
+
+    if idempotency_key is not None:
+        existing_trade = db.scalar(
+            select(Trade)
+            .join(Portfolio, Trade.portfolio_id == Portfolio.id)
+            .where(
+                Portfolio.user_id == user_id,
+                Trade.idempotency_key == idempotency_key,
+            )
+        )
+
+        if existing_trade is not None:
+            return find_existing_trade(
+                db,
+                existing_trade.portfolio_id,
+                idempotency_key,
+                trade_data,
+                trade_type="sell",
+            )
+
+    # Step 1: Find the asset.
+    asset = db.get(Asset, trade_data.asset_id)
+
+    if asset is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Asset not found",
+        )
+
+    # Step 2: Retrieve and validate the market price.
+    try:
+        quote = get_asset_quote(asset.symbol, asset.asset_type)
+
+        validate_quote_freshness(quote)
+
+        unit_price = Decimal(str(quote["price"]))
+
+        if quote["currency"] != "USD":
+            raise ValueError("Unsupported quote currency")
+
+        if not unit_price.is_finite() or unit_price <= 0:
+            raise ValueError("Invalid market price")
+
+        unit_price = unit_price.quantize(
+            Decimal("0.00000001"),
+            rounding=ROUND_HALF_UP,
+        )
+
+        if unit_price <= 0 or not fits_numeric(
+            unit_price,
+            precision=20,
+            scale=8,
+        ):
+            raise ValueError("Invalid market price")
+
+    except (
+        RuntimeError,
+        ValueError,
+        KeyError,
+        InvalidOperation,
+        httpx.HTTPError,
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="Market data temporarily unavailable",
+        )
+
+    # Step 3: Calculate sale proceeds.
+    raw_total = trade_data.quantity * unit_price
+
+    if raw_total < Decimal("1.00"):
+        raise HTTPException(
+            status_code=422,
+            detail="Minimum sale amount is $1.00",
+        )
+
+    total_amount = raw_total.quantize(
+        Decimal("0.01"),
+        rounding=ROUND_HALF_UP,
+    )
+
+    if not fits_numeric(
+        total_amount,
+        precision=28,
+        scale=8,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Sale amount exceeds supported limits",
+        )
+
+    # Step 4: Lock the user's portfolio.
+    portfolio = db.scalar(
+        select(Portfolio)
+        .where(Portfolio.user_id == user_id)
+        .with_for_update()
+    )
+
+    if portfolio is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Portfolio not found",
+        )
+
+    if idempotency_key is not None:
+        existing_trade = find_existing_trade(
+            db,
+            portfolio.id,
+            idempotency_key,
+            trade_data,
+            trade_type="sell",
+        )
+
+        if existing_trade is not None:
+            return existing_trade
+
+    # Step 5: Verify available holdings.
+    holding = db.scalar(
+        select(Holding).where(
+            Holding.portfolio_id == portfolio.id,
+            Holding.asset_id == asset.id,
+        )
+    )
+
+    if holding is None or holding.quantity < trade_data.quantity:
+        raise HTTPException(
+            status_code=409,
+            detail="Insufficient holdings",
+        )
+
+    # Step 6: Reduce the holding.
+    holding.quantity -= trade_data.quantity
+
+    if holding.quantity == 0:
+        holding.avg_cost = Decimal("0")
+
+    # Step 7: Credit sale proceeds.
+    new_cash_balance = portfolio.cash_balance + total_amount
+
+    if not fits_numeric(
+        new_cash_balance,
+        precision=18,
+        scale=2,
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="Cash balance exceeds supported limits",
+        )
+
+    portfolio.cash_balance = new_cash_balance
+
+    # Step 8: Record the sale.
+    new_trade = Trade(
+        portfolio_id=portfolio.id,
+        asset_id=asset.id,
+        trade_type="sell",
+        quantity=trade_data.quantity,
+        unit_price=unit_price,
+        total_amount=total_amount,
+        idempotency_key=idempotency_key,
+    )
+
+    db.add(new_trade)
+
+    # Step 9: Commit the transaction.
     try:
         db.commit()
 

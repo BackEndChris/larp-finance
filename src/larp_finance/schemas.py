@@ -65,3 +65,10 @@ class TradeResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class TradeSellRequest(BaseModel):
+    asset_id: int = Field(gt=0)
+    quantity: Decimal = Field(
+        gt=0,
+        max_digits=28,
+        decimal_places=12,
+    )

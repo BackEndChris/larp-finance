@@ -10,7 +10,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from larp_finance.models import User, Portfolio, Asset, Holding, Trade
-from larp_finance.schemas import TradeBuyRequest
+from larp_finance.schemas import TradeBuyRequest, TradeSellRequest
 from larp_finance.services import trading
 
 
@@ -281,6 +281,168 @@ def test_concurrent_idempotent_buys(test_engine, monkeypatch):
 
             assert len(trades) == 1
             assert trades[0].idempotency_key == "concurrent-buy-001"
+
+    finally:
+        with Session(test_engine) as db:
+            db.execute(
+                delete(Trade).where(
+                    Trade.portfolio_id == portfolio_id
+                )
+            )
+
+            db.execute(
+                delete(Holding).where(
+                    Holding.portfolio_id == portfolio_id
+                )
+            )
+
+            db.execute(
+                delete(Portfolio).where(
+                    Portfolio.id == portfolio_id
+                )
+            )
+
+            db.execute(
+                delete(User).where(
+                    User.id == user_id
+                )
+            )
+
+            db.execute(
+                delete(Asset).where(
+                    Asset.id == asset_id
+                )
+            )
+
+            db.commit()
+
+
+# Test 3: Concurrent Overselling
+
+def test_concurrent_sells_cannot_oversell(test_engine, monkeypatch):
+    unique_id = uuid4().hex[:10]
+    barrier = Barrier(2)
+
+    with Session(test_engine) as db:
+        user = User(
+            username=f"Seller{unique_id}",
+            email=f"seller{unique_id}@example.com",
+            password_hash="test-only",
+        )
+
+        asset = Asset(
+            symbol=f"SEL{unique_id}",
+            name="Concurrent Sale Test",
+            asset_type="stock",
+        )
+
+        db.add_all([user, asset])
+        db.flush()
+
+        portfolio = Portfolio(user_id=user.id)
+        db.add(portfolio)
+        db.flush()
+
+        holding = Holding(
+            portfolio_id=portfolio.id,
+            asset_id=asset.id,
+            quantity=Decimal("3"),
+            avg_cost=Decimal("200.00"),
+        )
+
+        portfolio.cash_balance = Decimal("9400.00")
+
+        db.add(holding)
+
+        user_id = user.id
+        asset_id = asset.id
+        portfolio_id = portfolio.id
+
+        db.commit()
+
+    def fake_quote(symbol, asset_type):
+        barrier.wait(timeout=15)
+
+        return {
+            "symbol": symbol,
+            "asset_type": asset_type,
+            "currency": "USD",
+            "price": Decimal("250.00"),
+            "as_of": datetime.now(timezone.utc).date().isoformat(),
+        }
+
+    monkeypatch.setattr(
+        trading,
+        "get_asset_quote",
+        fake_quote,
+    )
+
+    def attempt_sale(key):
+        with Session(test_engine) as db:
+            try:
+                trade = trading.execute_sell(
+                    trade_data=TradeSellRequest(
+                        asset_id=asset_id,
+                        quantity=Decimal("2"),
+                    ),
+                    user_id=user_id,
+                    db=db,
+                    idempotency_key=key,
+                )
+
+                return ("success", trade.id)
+
+            except HTTPException as exc:
+                return ("rejected", exc.status_code)
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(
+                attempt_sale,
+                "concurrent-sale-001",
+            )
+
+            second = executor.submit(
+                attempt_sale,
+                "concurrent-sale-002",
+            )
+
+            results = [
+                first.result(),
+                second.result(),
+            ]
+
+        assert sum(
+            result[0] == "success" for result in results
+        ) == 1
+
+        assert ("rejected", 409) in results
+
+        with Session(test_engine) as db:
+            portfolio = db.get(Portfolio, portfolio_id)
+
+            holding = db.scalar(
+                select(Holding).where(
+                    Holding.portfolio_id == portfolio_id,
+                    Holding.asset_id == asset_id,
+                )
+            )
+
+            trades = db.scalars(
+                select(Trade).where(
+                    Trade.portfolio_id == portfolio_id
+                )
+            ).all()
+
+            assert portfolio.cash_balance == Decimal("9900.00")
+
+            assert holding.quantity == Decimal("1")
+            assert holding.avg_cost == Decimal("200.00")
+
+            assert len(trades) == 1
+            assert trades[0].trade_type == "sell"
+            assert trades[0].quantity == Decimal("2")
+            assert trades[0].total_amount == Decimal("500.00")
 
     finally:
         with Session(test_engine) as db:

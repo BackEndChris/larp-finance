@@ -164,4 +164,18 @@ Added more automated tests covering quote freshness, concurrency, idempotency co
 
 Improvements could be made, specifically on automated test database migrations and perhaps error handling but those can be configured on a later date. Next on the list for now will be virtual selling and trade history. 
 
-Signed: 17 Commit "Feat: Improve Trading Reliability and Implement Idempotency"
+Signed: 17th Commit "Feat: Improve Trading Reliability and Implement Idempotency"
+
+Last implemention before moving on to Docker and Docker Compose, selling and trade history, which now completes the basic trading cycle. 
+
+Added all the necessary endpoints that allow authenticated users to sell assets they currently own as well as check the history of their trades with pagination and newest-first sorting. Also reused the existing PostgreSQL row locking and idempotency mechanisms from the buying system. 
+
+Additional automated tests have also been added: successful sales, insufficient holdings, full liquidation and repurchasing, idempotent sale retries and concurrent overselling. 
+
+Decided to also fix some pre existing database schema inconsistencies. Registered the test database with Alembic using stamp head then updated conftest.py to automatically apply pending migrations instead of relying on SQLAlchemy's create_all(). Should most likely prevent similar issues whenever the database scehma changes in future development. 
+
+All 46 automated tests so far passed as well. The basic buying, holding, selling and trade history functionality has been implemented successfully. Further improvements could still be done, but those can follow. 
+
+Coming right up would be Docker and Docker Compose, followed by Redis and Celery for background processing. 
+
+Signed: 18th Commit "Feat: Implement Virtual Selling, Trade History and Automated Test Migrations"

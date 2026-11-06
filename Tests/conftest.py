@@ -1,19 +1,22 @@
 import os
+from pathlib import Path
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 
-from larp_finance.database import Base, get_db
+from larp_finance.database import get_db
 from larp_finance.main import app
-from larp_finance import models  # Register ORM models
 
 
 load_dotenv()
 
 TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture(scope="session")
@@ -34,7 +37,20 @@ def test_engine():
                 "Tests must use the larp_finance_test database!"
             )
 
-        Base.metadata.create_all(bind=engine)
+        alembic_config = Config(
+            str(PROJECT_ROOT / "alembic.ini")
+        )
+
+        previous_url = os.environ.get("DATABASE_URL")
+
+        try:
+            os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+            command.upgrade(alembic_config, "head")
+        finally:
+            if previous_url is None:
+                os.environ.pop("DATABASE_URL", None)
+            else:
+                os.environ["DATABASE_URL"] = previous_url
 
         yield engine
 
