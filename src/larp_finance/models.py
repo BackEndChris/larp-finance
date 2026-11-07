@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, String, func, ForeignKey, Numeric, CheckConstraint, UniqueConstraint
+from sqlalchemy import DateTime, String, func, ForeignKey, Numeric, CheckConstraint, UniqueConstraint, Date
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -186,5 +186,86 @@ class Trade(Base):
             "portfolio_id",
             "idempotency_key",
             name="uq_trade_portfolio_idempotency_key",
+        ),
+    )
+
+class Simulation(Base):
+    __tablename__ = "simulations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    asset_id: Mapped[int] = mapped_column(
+        ForeignKey("assets.id"),
+        nullable=False,
+    )
+
+    initial_investment: Mapped[Decimal] = mapped_column(
+        Numeric(20, 2),
+        nullable=False,
+    )
+
+    purchase_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="pending",
+        server_default="pending",
+    )
+
+    purchase_price: Mapped[Decimal | None] = mapped_column(
+        Numeric(20, 8),
+        nullable=True,
+    )
+
+    final_price: Mapped[Decimal | None] = mapped_column(
+        Numeric(20, 8),
+        nullable=True,
+    )
+
+    final_value: Mapped[Decimal | None] = mapped_column(
+        Numeric(28, 2),
+        nullable=True,
+    )
+
+    profit_loss: Mapped[Decimal | None] = mapped_column(
+        Numeric(28, 2),
+        nullable=True,
+    )
+
+    error_message: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "initial_investment >= 1",
+            name="ck_simulation_minimum_investment",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'running', 'completed', 'failed')",
+            name="ck_simulation_status",
         ),
     )

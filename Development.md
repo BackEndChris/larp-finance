@@ -193,3 +193,15 @@ A fresh Docker Compose project with its own database and volume were also confir
 The backend should now be possible to initialize through a single Docker Compose command, as long as the required environment variables are configured. Next up should be Redis and Celery for background processing and investment simulations. 
 
 Signed: 19th Commit "Feat: Containerize Backend with Docker and Automate Database Initialization"
+
+Background processing has been implemented for the project using Redis and Celery. 
+
+Added Redis to Docker Compose as a message broker and added a separate Celery worker to do background tasks independently of FastAPI. Started to check with a simple addition task to verify communication between the 3: FastAPI, Redis and Celery then implemented authenticated task submission and status endpoints and finally added five relating automated tests, bring the total to 51. 
+
+Moved on to a trial version of the investment simulation system as well, created a simulartion SQLAlchemy model with user ownership, investment inputs etc. before applying the sixth Alembic migration to introduce the simulations table. The authenticated simulation creation endpoint also had investment amount, asset and historical date validation. Also implemented a retrieval endpoint that would block access to the simulation's owner to then prevent unauthorized access to other users' records. 
+
+Added nine more simulation tests covering creation, persistence, validation etc. All 60 automated tests passed. 
+
+To follow would be implementing the actual buy and hold calculation engine, followed by historical market data integration and Celery execution. 
+
+Signed: 20th Commit "Feat: Integrate Redis and Celery and Implement Simulation API"

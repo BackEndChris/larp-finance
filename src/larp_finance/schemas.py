@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from decimal import Decimal
-from datetime import datetime
+from datetime import date, datetime
 
 
 class UserCreate(BaseModel):
@@ -72,3 +72,32 @@ class TradeSellRequest(BaseModel):
         max_digits=28,
         decimal_places=12,
     )
+
+class SimulationCreate(BaseModel):
+    asset_id: int = Field(gt=0)
+    initial_investment: Decimal = Field(
+        ge=Decimal("1.00"),
+        max_digits=20,
+        decimal_places=2,
+    )
+    purchase_date: date
+
+
+class SimulationResponse(BaseModel):
+    id: int
+    user_id: int
+    asset_id: int
+    initial_investment: Decimal
+    purchase_date: date
+    status: str
+
+    purchase_price: Decimal | None
+    final_price: Decimal | None
+    final_value: Decimal | None
+    profit_loss: Decimal | None
+    error_message: str | None
+
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
