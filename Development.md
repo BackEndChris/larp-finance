@@ -237,3 +237,21 @@ Expanded the tests from 88 to 111 passed.
 The simulation system is now working with background processing but still uses fake market data. Next is implementing actual historical prices and eventually finishing the documentation for presentation.
 
 Signed: 22nd Commit "Feat: Implement Asynchronous Simulation Processing and Recovery"
+
+Started integrating actual historical market data into LARP Finance instead of relying on fictional prices for simulations.
+
+After looking into different providers decided to go with Twelve Data since it supports both stocks and crypto. Added a new system that retrieves historical closing prices and validates the data before using it for calculations.
+
+For stocks the simulations now account for stock splits but not dividends. Also improved how historical dates are handled for weekends and holidays. The actual dates used for calculations are now saved separately from the dates users originally requested.
+
+Added Redis caching to reduce API requests along with rate limiting and cooldowns. Also improved the retry system for when the market data provider is temporarily unavailable.
+
+Connected Twelve Data to Celery while keeping the fake provider for testing and demo purposes. Simulations are now labelled depending on whether the prices are real or fictional. Applied the 11th Alembic migration for the new database fields and retry improvements.
+
+Tested the workflow with Docker using mocked market data and everything worked under the tested conditions. Expanded the tests from 111 to 167 passed with one existing warning remaining.
+
+Still need to test Twelve Data directly with a real API key and check the licensing before using their prices publicly.
+
+Next is finishing the documentation and preparing the project for presentation before the final code review.
+
+Signed: 23rd Commit "Feat: Integrate Historical Market Data with Twelve Data"

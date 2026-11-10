@@ -5,11 +5,13 @@ separate recovery scanner. Start with:
 
     docker compose --env-file .env.docker up --build -d
 
-Compose explicitly selects `LARP_SIMULATION_MODE=demo` for the worker. These
-simulations use fictional prices of $100 at purchase and $120 at valuation;
-they do not represent historical market data. The API schema is unchanged.
-Outside Compose set this variable explicitly. An absent/unsupported mode fails
-the simulation. Replace `build_simulation_provider` for future providers.
+Compose defaults `LARP_SIMULATION_MODE=demo` for the API and worker. These
+simulations use fictional prices of $100 at purchase and $120 at valuation.
+Commit 23 adds `real` mode, persistent data-source labels and actual trading
+dates. See [historical data operations](HISTORICAL_DATA.md) for configuration,
+price policy, caching and licensing. Outside Compose select a mode explicitly;
+an absent/unsupported mode prevents new API simulation creation. Existing jobs
+always retain their saved data source, regardless of the current default mode.
 
 For local operation apply `uv run alembic upgrade head`, run the API and a Linux
 Celery prefork worker, and also run `uv run python -m larp_finance.simulation_recovery`.
@@ -34,14 +36,17 @@ status and PostgreSQL clock after locking. Results after lease expiration are
 discarded even if no replacement worker has claimed the row. SQLAlchemy failures
 roll back and escape to Celery without automatic retries; the scanner handles
 uncertain commits and abandoned leases. Completed/failed rows are never queued
-again. Calculation exceptions fail immediately. Celery results are ignored;
+again. Permanent calculation exceptions fail immediately. Transient historical
+provider errors schedule a durable delayed retry, with the same three-claim
+budget. `retry_not_before` also prevents duplicate deliveries bypassing backoff.
+Celery results are ignored;
 GET /simulations/{id} is the authenticated source of status/results.
 
 Monitor `docker compose --env-file .env.docker logs worker recovery` and query
 simulation status through the API. Recovery requires the scanner to remain
 running. Hard process termination is provided by Linux Celery prefork, while
-lease fencing protects stored results for all callers. Future external providers
-must also implement bounded network timeouts.
+lease fencing protects stored results for all callers. External providers use
+explicit network timeouts.
 
 Integration verification (creates and removes its own fictional test records):
 

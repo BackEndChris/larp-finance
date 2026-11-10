@@ -92,6 +92,9 @@ class SimulationResponse(BaseModel):
     purchase_date: date
     valuation_date: date
     status: str
+    data_source: str
+    actual_purchase_date: date | None
+    actual_valuation_date: date | None
 
     purchase_price: Decimal | None
     final_price: Decimal | None

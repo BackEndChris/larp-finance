@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
+import pytest
 
 from sqlalchemy import select
 
@@ -368,3 +369,24 @@ def test_future_valuation_date_rejected(
     )
 
     assert response.status_code == 422
+
+@pytest.mark.parametrize("mode,expected", [("demo", "demo"), ("real", "twelve_data")])
+def test_creation_records_configured_source(client, db_session, monkeypatch, mode, expected):
+    monkeypatch.setenv("LARP_SIMULATION_MODE", mode)
+    headers = register_and_login(client, "SourceTester", "sourcetester@example.com")
+    asset = create_test_asset(db_session)
+    response = client.post("/simulations", json=valid_payload(asset.id), headers=headers)
+    assert response.status_code == 201
+    assert response.json()["data_source"] == expected
+    assert response.json()["actual_purchase_date"] is None
+    monkeypatch.setenv("LARP_SIMULATION_MODE", "real" if mode == "demo" else "demo")
+    assert client.get(f"/simulations/{response.json()['id']}", headers=headers).json()["data_source"] == expected
+
+
+def test_creation_requires_explicit_data_mode(client, db_session, monkeypatch):
+    headers = register_and_login(client, "ModeTester", "modetester@example.com")
+    asset = create_test_asset(db_session)
+    monkeypatch.delenv("LARP_SIMULATION_MODE", raising=False)
+    response = client.post("/simulations", json=valid_payload(asset.id), headers=headers)
+    assert response.status_code == 503
+    assert db_session.scalar(select(Simulation.id)) is None

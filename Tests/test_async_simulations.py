@@ -320,12 +320,12 @@ def test_claim_commit_failure_does_not_claim(db_session, simulation, monkeypatch
     assert simulation.processing_token is None
 
 
-def test_missing_demo_mode_fails_job(db_session, simulation, monkeypatch):
+def test_persisted_demo_source_survives_configuration_change(db_session, simulation, monkeypatch):
     monkeypatch.delenv("LARP_SIMULATION_MODE")
-    with pytest.raises(ValueError, match="explicit demo"):
-        processing.process_simulation(db_session, simulation.id, provider_factory=tasks.build_simulation_provider)
+    processing.process_simulation(db_session, simulation.id, provider_factory=tasks.build_simulation_provider)
     db_session.refresh(simulation)
-    assert simulation.status == "failed"
+    assert simulation.status == "completed"
+    assert simulation.data_source == "demo"
     assert simulation.processing_token is None
     assert simulation.lease_expires_at is None
 
@@ -338,3 +338,79 @@ def test_completed_job_is_never_dispatched(db_session, simulation, publish):
     db_session.refresh(simulation)
     assert simulation.status == "completed"
     assert simulation.final_value == Decimal("1200")
+
+@pytest.mark.parametrize("status", [429, 503, 401])
+def test_real_provider_errors_follow_durable_retry_policy(db_session, simulation, monkeypatch, status):
+    from contextlib import nullcontext
+    import httpx
+    from larp_finance.services.twelve_data import TwelveDataHistoricalPriceProvider
+    from larp_finance.services.historical_errors import HistoricalPriceError, TemporaryHistoricalPriceError
+
+    simulation.data_source = "twelve_data"
+    db_session.get(Asset, simulation.asset_id).symbol = "AAPL"
+    simulation_id = simulation.id
+    db_session.commit()
+    calls = []
+    def respond(request):
+        calls.append(request)
+        return httpx.Response(status)
+    cache = Mock()
+    cache.get.return_value = None
+    cache.lock.side_effect = lambda key: nullcontext()
+    provider = TwelveDataHistoricalPriceProvider("test-secret", cache=cache, transport=httpx.MockTransport(respond))
+    with pytest.raises(HistoricalPriceError):
+        processing.process_simulation(db_session, simulation_id, provider)
+    db_session.refresh(simulation)
+    assert simulation.status == ("failed" if status == 401 else "pending")
+    assert simulation.processing_token is None
+    if status != 401:
+        assert simulation.retry_not_before > datetime.now(timezone.utc)
+        processing.process_simulation(db_session, simulation_id, provider)
+        assert len(calls) == 1
+        for attempt in range(2):
+            simulation.retry_not_before = datetime.now(timezone.utc) - timedelta(seconds=1)
+            simulation.next_dispatch_at = simulation.retry_not_before
+            db_session.commit()
+            with pytest.raises(TemporaryHistoricalPriceError):
+                processing.process_simulation(db_session, simulation_id, provider)
+            db_session.refresh(simulation)
+        assert simulation.status == "failed"
+        assert simulation.processing_attempts == 3
+        assert len(calls) == 3
+
+
+def test_real_task_persists_source_and_actual_dates(test_engine, durable_simulation, monkeypatch):
+    from contextlib import nullcontext
+    import httpx
+    from larp_finance.services.twelve_data import TwelveDataHistoricalPriceProvider
+
+    simulation_id = durable_simulation[0]
+    with Session(test_engine) as db:
+        simulation = db.get(Simulation, simulation_id)
+        simulation.data_source = "twelve_data"
+        simulation.purchase_date = date(2023, 1, 1)
+        db.get(Asset, simulation.asset_id).symbol = "AAPL"
+        db.commit()
+    cache = Mock()
+    cache.get.return_value = None
+    cache.lock.side_effect = lambda key: nullcontext()
+    data = {"status": "ok", "meta": {"symbol": "AAPL", "interval": "1day", "currency": "USD", "exchange_timezone": "America/New_York"},
+            "values": [{"datetime": "2023-01-03", "close": "125"}, {"datetime": "2024-01-02", "close": "200"}]}
+    calls = []
+    def respond(request):
+        calls.append(request)
+        return httpx.Response(200, json=data)
+    provider = TwelveDataHistoricalPriceProvider("test-secret", cache=cache, transport=httpx.MockTransport(respond))
+    monkeypatch.setattr(tasks, "TwelveDataHistoricalPriceProvider", lambda: provider)
+    monkeypatch.setattr(tasks, "SessionLocal", lambda: Session(test_engine))
+    tasks.process_simulation_task.run(simulation_id)
+    tasks.process_simulation_task.run(simulation_id)
+    with Session(test_engine) as db:
+        simulation = db.get(Simulation, simulation_id)
+        assert simulation.data_source == "twelve_data"
+        assert simulation.purchase_date == date(2023, 1, 1)
+        assert simulation.actual_purchase_date == date(2023, 1, 3)
+        assert simulation.actual_valuation_date == date(2024, 1, 2)
+        assert simulation.final_value == Decimal("1600")
+        assert simulation.profit_loss == Decimal("600")
+    assert len(calls) == 1

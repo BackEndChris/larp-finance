@@ -101,7 +101,7 @@ try:
         env={**os.environ, "LARP_SIMULATION_MODE": "unsupported"},
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
-    failed_id = create(next_dispatch_at=datetime.now(timezone.utc) + timedelta(hours=1))
+    failed_id = create(data_source="unsupported", next_dispatch_at=datetime.now(timezone.utc) + timedelta(hours=1))
     process_simulation_task.apply_async(args=[failed_id], queue=queue, retry=False)
     await_status(failed_id, "failed")
     print("PASS: real Celery provider configuration failure -> failed, claim cleared")

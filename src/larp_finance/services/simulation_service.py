@@ -46,10 +46,12 @@ def run_buy_and_hold_simulation(
         end_date=valuation_date + timedelta(days=7),
     )
 
+    max_gap = timedelta(days=1 if asset_type == "crypto" else 7)
     actual_purchase_date, purchase_price = (
         select_purchase_price(
             prices,
             purchase_date,
+            max_gap=max_gap,
         )
     )
 
@@ -57,6 +59,7 @@ def run_buy_and_hold_simulation(
         select_valuation_price(
             prices,
             valuation_date,
+            max_gap=max_gap,
         )
     )
 

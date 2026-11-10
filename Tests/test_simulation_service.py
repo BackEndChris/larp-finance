@@ -112,3 +112,15 @@ def test_purchase_after_available_valuation():
             purchase_date=date(2026, 1, 3),
             valuation_date=date(2026, 1, 4),
         )
+
+@pytest.mark.parametrize("kind,works", [("stock", True), ("crypto", False)])
+def test_market_specific_missing_date_gap(kind, works):
+    provider = FakeHistoricalPriceProvider({"TEST": {
+        date(2023, 1, 3): Decimal("100"), date(2023, 1, 6): Decimal("120"),
+    }})
+    if works:
+        result = run_buy_and_hold_simulation(provider, "TEST", kind, Decimal("1000"), date(2023, 1, 1), date(2023, 1, 6))
+        assert result.purchase_date == date(2023, 1, 3)
+    else:
+        with pytest.raises(ValueError, match="No purchase"):
+            run_buy_and_hold_simulation(provider, "TEST", kind, Decimal("1000"), date(2023, 1, 1), date(2023, 1, 6))

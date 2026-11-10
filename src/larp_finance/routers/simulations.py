@@ -11,6 +11,8 @@ from larp_finance.database import get_db
 from larp_finance.models import Asset, Simulation, User
 from larp_finance.schemas import SimulationCreate, SimulationResponse
 from larp_finance.services.simulation_dispatch import dispatch_simulations
+from larp_finance.tasks import configured_data_source
+from larp_finance.services.historical_errors import HistoricalPriceError
 
 
 router = APIRouter(
@@ -23,7 +25,7 @@ router = APIRouter(
     "",
     response_model=SimulationResponse,
     status_code=status.HTTP_201_CREATED,
-    description="Queue a historical simulation. Commit 22 uses fictional demo prices ($100/$120), not market data.",
+    description="Queue a USD price-return simulation. data_source distinguishes fictional demo prices from Twelve Data split-adjusted, dividend-excluded historical closes.",
 )
 def create_simulation(
     simulation_data: SimulationCreate,
@@ -60,6 +62,10 @@ def create_simulation(
         )
 
     # Step 3: Create a pending simulation.
+    try:
+        data_source = configured_data_source()
+    except HistoricalPriceError:
+        raise HTTPException(status_code=503, detail="Simulation data mode is not configured")
     simulation = Simulation(
         user_id=current_user.id,
         asset_id=asset.id,
@@ -67,6 +73,7 @@ def create_simulation(
         purchase_date=simulation_data.purchase_date,
         valuation_date=simulation_data.valuation_date,
         status="pending",
+        data_source=data_source,
     )
 
     db.add(simulation)

@@ -220,6 +220,11 @@ class Simulation(Base):
         nullable=False,
     )
 
+    data_source: Mapped[str] = mapped_column(String(30), default="demo", server_default="demo")
+    actual_purchase_date: Mapped[date | None] = mapped_column(Date)
+    actual_valuation_date: Mapped[date | None] = mapped_column(Date)
+    retry_not_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
 
     status: Mapped[str] = mapped_column(
         String(20),

@@ -8,11 +8,13 @@ MAX_DATE_GAP = timedelta(days=7)
 def select_purchase_price(
     prices: dict[date, Decimal],
     requested_date: date,
+    *,
+    max_gap: timedelta = MAX_DATE_GAP,
 ) -> tuple[date, Decimal]:
     candidates = [
         day
         for day in prices
-        if requested_date <= day <= requested_date + MAX_DATE_GAP
+        if requested_date <= day <= requested_date + max_gap
     ]
 
     if not candidates:
@@ -30,11 +32,13 @@ def select_purchase_price(
 def select_valuation_price(
     prices: dict[date, Decimal],
     valuation_date: date,
+    *,
+    max_gap: timedelta = MAX_DATE_GAP,
 ) -> tuple[date, Decimal]:
     candidates = [
         day
         for day in prices
-        if valuation_date - MAX_DATE_GAP <= day <= valuation_date
+        if valuation_date - max_gap <= day <= valuation_date
     ]
 
     if not candidates:
