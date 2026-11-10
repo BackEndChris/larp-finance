@@ -15,3 +15,9 @@ celery_app = Celery(
     backend=REDIS_URL,
     include=["larp_finance.tasks"],
 )
+
+celery_app.conf.update(
+    broker_connection_timeout=3,
+    broker_transport_options={"socket_connect_timeout": 3, "socket_timeout": 3},
+    worker_prefetch_multiplier=1,
+)

@@ -1,4 +1,5 @@
 from datetime import date
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from larp_finance.auth import get_current_user
 from larp_finance.database import get_db
 from larp_finance.models import Asset, Simulation, User
 from larp_finance.schemas import SimulationCreate, SimulationResponse
+from larp_finance.services.simulation_dispatch import dispatch_simulations
 
 
 router = APIRouter(
@@ -21,6 +23,7 @@ router = APIRouter(
     "",
     response_model=SimulationResponse,
     status_code=status.HTTP_201_CREATED,
+    description="Queue a historical simulation. Commit 22 uses fictional demo prices ($100/$120), not market data.",
 )
 def create_simulation(
     simulation_data: SimulationCreate,
@@ -79,8 +82,14 @@ def create_simulation(
         )
 
     db.refresh(simulation)
-
-    return simulation
+    response = SimulationResponse.model_validate(simulation)
+    db.rollback()
+    try:
+        dispatch_simulations(db, response.id)
+    except SQLAlchemyError:
+        db.rollback()
+        logging.getLogger(__name__).exception("Simulation saved; recovery will dispatch it")
+    return response
 
 
 @router.get(

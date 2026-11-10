@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, String, func, ForeignKey, Numeric, CheckConstraint, UniqueConstraint, Date
+from sqlalchemy import DateTime, String, func, ForeignKey, Numeric, CheckConstraint, UniqueConstraint, Date, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -228,6 +228,22 @@ class Simulation(Base):
         server_default="pending",
     )
 
+    processing_token: Mapped[str | None] = mapped_column(
+        String(36),
+        nullable=True,
+    )
+
+    processing_attempts: Mapped[int] = mapped_column(default=0, server_default="0")
+    dispatch_attempts: Mapped[int] = mapped_column(default=0, server_default="0")
+    next_dispatch_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     purchase_price: Mapped[Decimal | None] = mapped_column(
         Numeric(20, 8),
         nullable=True,
@@ -275,4 +291,5 @@ class Simulation(Base):
             "status IN ('pending', 'running', 'completed', 'failed')",
             name="ck_simulation_status",
         ),
+        Index("ix_simulations_recovery", "status", "next_dispatch_at"),
     )

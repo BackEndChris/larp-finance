@@ -221,3 +221,19 @@ Expanded the tests from 60 to 88 passed.
 Next is connecting the whole thing to Celery and improving the background processing before eventually implementing actual historical market data.
 
 Signed: 21st Commit "Feat: Implement Historical Simulation Engine and Processing Foundation"
+
+Continued working on the simulation processing system and finally connected it to Celery so that simulations can now run in the background.
+
+Improved the reliability of the processing service by adding worker ownership tokens and processing leases to prevent workers from interfering with each other. Also added a way to recover expired leases and stop outdated workers from saving results. Applied the 9th Alembic migration for the new fields.
+
+Connected the simulation system to Celery using separate database sessions for workers and fake historical prices for now. The API can now submit simulations and retrieve the results once they're done.
+
+Added a recovery system for when Redis is unavailable or workers crash during processing. Implemented retries with limits and a way to recover simulations that weren't properly submitted to Celery. Another Alembic migration was added for retry tracking and scheduling.
+
+Updated Docker Compose to run the recovery system alongside the other services. Tested the whole process including background execution, failed submissions, expired leases and concurrency.
+
+Expanded the tests from 88 to 111 passed.
+
+The simulation system is now working with background processing but still uses fake market data. Next is implementing actual historical prices and eventually finishing the documentation for presentation.
+
+Signed: 22nd Commit "Feat: Implement Asynchronous Simulation Processing and Recovery"

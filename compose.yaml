@@ -42,7 +42,7 @@ services:
       init:
         condition: service_completed_successfully
 
-  
+
   redis:
     image: redis:7-alpine
     healthcheck:
@@ -52,7 +52,7 @@ services:
       retries: 5
     restart: unless-stopped
 
-  
+
   worker:
     build: .
     image: larp-finance:dev
@@ -60,6 +60,8 @@ services:
       - .env.docker
     environment:
       REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+psycopg://larp_user:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/larp_finance
+      LARP_SIMULATION_MODE: ${LARP_SIMULATION_MODE:-demo}
     command:
       - celery
       - -A
@@ -68,13 +70,27 @@ services:
       - --loglevel=info
       - --concurrency=2
     depends_on:
+      init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
+    restart: unless-stopped
+
+  recovery:
+    build: .
+    image: larp-finance:dev
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_URL: postgresql+psycopg://larp_user:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/larp_finance
+      REDIS_URL: redis://redis:6379/0
+    command: ["python", "-m", "larp_finance.simulation_recovery"]
+    depends_on:
+      init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 
 
 volumes:
   postgres_data:
-
-  

@@ -17,3 +17,4 @@ __pycheck__/
 .env.docker
 
 .env.*
+!.env.example

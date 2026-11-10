@@ -15,6 +15,13 @@ from larp_finance.main import app
 
 load_dotenv()
 
+
+@pytest.fixture(autouse=True)
+def isolate_simulation_broker(monkeypatch):
+    from larp_finance.tasks import process_simulation_task
+    monkeypatch.setenv("LARP_SIMULATION_MODE", "demo")
+    monkeypatch.setattr(process_simulation_task, "apply_async", lambda **kwargs: None)
+
 TEST_DATABASE_URL = os.environ["TEST_DATABASE_URL"]
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
