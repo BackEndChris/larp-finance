@@ -51,6 +51,7 @@ def valid_payload(asset_id):
         "asset_id": asset_id,
         "initial_investment": "1000.00",
         "purchase_date": "2023-01-01",
+        "valuation_date": "2025-06-20",
     }
 
 
@@ -297,3 +298,73 @@ def test_get_unknown_simulation(client):
     )
 
     assert response.status_code == 404
+
+
+def test_valuation_date_before_purchase_rejected(
+    client, db_session
+):
+    headers = register_and_login(
+        client,
+        "InvalidValuation1",
+        "invalidvaluation1@example.com",
+    )
+    asset = create_test_asset(db_session)
+
+    payload = valid_payload(asset.id)
+    payload["purchase_date"] = "2025-06-20"
+    payload["valuation_date"] = "2025-01-01"
+
+    response = client.post(
+        "/simulations",
+        json=payload,
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+
+
+def test_same_purchase_and_valuation_date_rejected(
+    client, db_session
+):
+    headers = register_and_login(
+        client,
+        "InvalidValuation2",
+        "invalidvaluation2@example.com",
+    )
+    asset = create_test_asset(db_session)
+
+    payload = valid_payload(asset.id)
+    payload["purchase_date"] = "2025-06-20"
+    payload["valuation_date"] = "2025-06-20"
+
+    response = client.post(
+        "/simulations",
+        json=payload,
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+
+
+def test_future_valuation_date_rejected(
+    client, db_session
+):
+    headers = register_and_login(
+        client,
+        "InvalidValuation3",
+        "invalidvaluation3@example.com",
+    )
+    asset = create_test_asset(db_session)
+
+    payload = valid_payload(asset.id)
+    payload["valuation_date"] = (
+        date.today() + timedelta(days=1)
+    ).isoformat()
+
+    response = client.post(
+        "/simulations",
+        json=payload,
+        headers=headers,
+    )
+
+    assert response.status_code == 422

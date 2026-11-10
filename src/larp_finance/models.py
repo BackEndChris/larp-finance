@@ -214,6 +214,13 @@ class Simulation(Base):
         nullable=False,
     )
 
+
+    valuation_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
+
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,

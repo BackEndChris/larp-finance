@@ -205,3 +205,19 @@ Added nine more simulation tests covering creation, persistence, validation etc.
 To follow would be implementing the actual buy and hold calculation engine, followed by historical market data integration and Celery execution. 
 
 Signed: 20th Commit "Feat: Integrate Redis and Celery and Implement Simulation API"
+
+Started working on the actual simulation engine for LARP Finance.
+
+Created a buy and hold calculation system that calculates how much an investment would be worth based on historical prices. Used Decimal again for accuracy.
+
+Added a historical market data interface so that we're not dependent on a specific API provider. Also created a fake provider for testing purposes.
+
+Implemented a way to handle weekends and holidays when looking for historical prices. Added valuation dates to the simulations and updated the database with 2 new Alembic migrations.
+
+Connected the different calculation components together and started implementing the simulation processing service with basic status handling and prevention of duplicate processing.
+
+Expanded the tests from 60 to 88 passed.
+
+Next is connecting the whole thing to Celery and improving the background processing before eventually implementing actual historical market data.
+
+Signed: 21st Commit "Feat: Implement Historical Simulation Engine and Processing Foundation"

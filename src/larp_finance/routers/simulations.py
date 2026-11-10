@@ -33,6 +33,19 @@ def create_simulation(
             status_code=422,
             detail="Purchase date must be in the past",
         )
+    
+    if simulation_data.valuation_date > date.today():
+        raise HTTPException(
+            status_code=422,
+            detail="Valuation date cannot be in the future",
+        )
+
+    if simulation_data.valuation_date <= simulation_data.purchase_date:
+        raise HTTPException(
+            status_code=422,
+            detail="Valuation date must be after purchase date",
+        )
+
 
     # Step 2: Check that the asset exists.
     asset = db.get(Asset, simulation_data.asset_id)
@@ -49,6 +62,7 @@ def create_simulation(
         asset_id=asset.id,
         initial_investment=simulation_data.initial_investment,
         purchase_date=simulation_data.purchase_date,
+        valuation_date=simulation_data.valuation_date,
         status="pending",
     )
 

@@ -81,6 +81,7 @@ class SimulationCreate(BaseModel):
         decimal_places=2,
     )
     purchase_date: date
+    valuation_date: date
 
 
 class SimulationResponse(BaseModel):
@@ -89,6 +90,7 @@ class SimulationResponse(BaseModel):
     asset_id: int
     initial_investment: Decimal
     purchase_date: date
+    valuation_date: date
     status: str
 
     purchase_price: Decimal | None
