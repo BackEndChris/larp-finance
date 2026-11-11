@@ -10,7 +10,7 @@ from larp_finance.schemas import AssetResponse, AssetQuoteResponse
 from larp_finance.market_data import get_asset_quote
 
 
-router = APIRouter()
+router = APIRouter(tags=["Assets"])
 
 
 @router.get(

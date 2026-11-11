@@ -14,7 +14,7 @@ from larp_finance.security import (
 from larp_finance.auth import get_current_user
 
 
-router = APIRouter()
+router = APIRouter(tags=["Users"])
 
 
 @router.post(

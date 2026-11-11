@@ -3,7 +3,7 @@ import os
 import httpx
 from dotenv import load_dotenv
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from time import monotonic
 from threading import Lock
 
@@ -18,6 +18,28 @@ CACHE_TTL_SECONDS = 3600
 
 quote_cache = {}
 cache_lock = Lock()
+
+
+def response_data(response: httpx.Response) -> dict:
+    try:
+        data = response.json()
+    except ValueError:
+        raise RuntimeError("Malformed market data response") from None
+    if not isinstance(data, dict):
+        raise RuntimeError("Malformed market data response")
+    if "Note" in data or "Information" in data or "Error Message" in data:
+        raise RuntimeError("Market data request rejected by provider")
+    return data
+
+
+def positive_price(raw) -> Decimal:
+    try:
+        price = Decimal(str(raw))
+    except InvalidOperation:
+        raise RuntimeError("Invalid market price") from None
+    if not price.is_finite() or price <= 0:
+        raise RuntimeError("Invalid market price")
+    return price
 
 
 def get_stock_quote(symbol: str) -> dict:
@@ -35,28 +57,23 @@ def get_stock_quote(symbol: str) -> dict:
         response = client.get(BASE_URL, params=params)
         response.raise_for_status()
 
-    data = response.json()
-
-    if "Note" in data or "Information" in data:
-        raise RuntimeError(
-            data.get("Note") or data.get("Information")
-        )
-
-    if "Error Message" in data:
-        raise ValueError(data["Error Message"])
+    data = response_data(response)
 
     quote = data.get("Global Quote")
 
-    if not quote:
+    if not isinstance(quote, dict):
         raise RuntimeError(
             "Alpha Vantage returned no stock quote."
         )
+
+    if quote.get("01. symbol") != symbol or not isinstance(quote.get("07. latest trading day"), str):
+        raise RuntimeError("Incomplete market data response")
 
     return {
         "symbol": quote["01. symbol"],
         "asset_type": "stock",
         "currency": "USD",
-        "price": Decimal(quote["05. price"]),
+        "price": positive_price(quote.get("05. price")),
         "as_of": quote["07. latest trading day"],
     }
 
@@ -75,28 +92,23 @@ def get_crypto_quote(symbol: str) -> dict:
         response = client.get(BASE_URL, params=params)
         response.raise_for_status()
 
-    data = response.json()
-
-    if "Note" in data or "Information" in data:
-        raise RuntimeError(
-            data.get("Note") or data.get("Information")
-        )
-
-    if "Error Message" in data:
-        raise ValueError(data["Error Message"])
+    data = response_data(response)
 
     exchange_rate = data.get("Realtime Currency Exchange Rate")
 
-    if not exchange_rate:
+    if not isinstance(exchange_rate, dict):
         raise RuntimeError(
             "Alpha Vantage returned no cryptocurrency exchange rate."
         )
+
+    if exchange_rate.get("6. Last Refreshed") is not None and not isinstance(exchange_rate["6. Last Refreshed"], str):
+        raise RuntimeError("Invalid market data timestamp")
 
     return {
         "symbol": symbol,
         "asset_type": "crypto",
         "currency": "USD",
-        "price": Decimal(exchange_rate["5. Exchange Rate"]),
+        "price": positive_price(exchange_rate.get("5. Exchange Rate")),
         "as_of": exchange_rate.get("6. Last Refreshed"),
     }
 

@@ -91,3 +91,16 @@ def test_nonexistent_user_token(client, db_session):
     )
 
     assert response.status_code == 401
+
+
+def test_blank_signing_secret_rejects_startup():
+    import os
+    import subprocess
+    import sys
+    result = subprocess.run(
+        [sys.executable, "-c", "import larp_finance.security"],
+        env={**os.environ, "JWT_SECRET_KEY": " "},
+        capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode != 0
+    assert "JWT_SECRET_KEY must not be blank" in result.stderr

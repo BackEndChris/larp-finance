@@ -70,3 +70,21 @@ def test_market_data_failure_returns_503(
     response = client.get("/assets/AAPL/quote")
 
     assert response.status_code == 503
+
+@pytest.mark.parametrize("body", [
+    [], {"Global Quote": {}}, {"Global Quote": {"01. symbol": "AAPL", "07. latest trading day": "2026-11-04", "05. price": "NaN"}},
+    {"Global Quote": {"01. symbol": "AAPL", "07. latest trading day": "2026-11-04", "05. price": "not-a-number"}},
+])
+def test_malformed_provider_quote_returns_503(client, sample_asset, monkeypatch, body):
+    from unittest.mock import MagicMock
+    from larp_finance import market_data
+    market_data.quote_cache.clear()
+    provider_client = MagicMock()
+    provider_client.__enter__.return_value = provider_client
+    provider_client.get.return_value.json.return_value = body
+    monkeypatch.setattr(market_data, "ALPHA_VANTAGE_API_KEY", "test-only-key")
+    monkeypatch.setattr(market_data.httpx, "Client", lambda **kwargs: provider_client)
+    response = client.get("/assets/AAPL/quote")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Market data temporarily unavailable"}
+    assert not market_data.quote_cache

@@ -10,7 +10,7 @@ from larp_finance.auth import get_current_user
 from larp_finance.services.trading import execute_buy, execute_sell
 
 
-router = APIRouter()
+router = APIRouter(tags=["Trades"])
 
 
 @router.post(

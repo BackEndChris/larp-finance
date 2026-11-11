@@ -8,7 +8,7 @@ from larp_finance.schemas import PortfolioResponse
 from larp_finance.auth import get_current_user
 
 
-router = APIRouter()
+router = APIRouter(tags=["Portfolio"])
 
 
 @router.get(

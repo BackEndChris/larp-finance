@@ -31,7 +31,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/larp_finance_test
       TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/larp_finance_test
-      JWT_SECRET_KEY: ${{ secrets.CI_JWT_SECRET_KEY }}
+      JWT_SECRET_KEY: ci-only-test-signing-key-not-for-running-the-application
 
     steps:
       - name: Checkout repository

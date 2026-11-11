@@ -11,6 +11,8 @@ load_dotenv()
 password_hash = PasswordHash.recommended()
 
 JWT_SECRET_KEY = os.environ["JWT_SECRET_KEY"]
+if not JWT_SECRET_KEY.strip():
+    raise RuntimeError("JWT_SECRET_KEY must not be blank")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

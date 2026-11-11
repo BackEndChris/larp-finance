@@ -146,3 +146,16 @@ def test_invalid_task_id(client):
     )
 
     assert response.status_code == 422
+
+
+def test_unavailable_task_backend_returns_503(client, monkeypatch):
+    from redis.exceptions import ConnectionError
+    headers = authenticated_headers(client)
+    class UnavailableResult:
+        @property
+        def state(self):
+            raise ConnectionError("private connection details")
+    monkeypatch.setattr(tasks_router.celery_app, "AsyncResult", lambda task_id: UnavailableResult())
+    response = client.get(f"/tasks/{uuid4()}", headers=headers)
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Task results temporarily unavailable"}

@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from kombu.exceptions import OperationalError
+from redis.exceptions import RedisError
 from pydantic import BaseModel
 
 from larp_finance.auth import get_current_user
@@ -45,10 +46,12 @@ def get_task_status(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
 ):
-    task = celery_app.AsyncResult(str(task_id))
-
-    return {
-        "task_id": str(task_id),
-        "status": task.state,
-        "result": task.result if task.successful() else None,
-    }
+    try:
+        task = celery_app.AsyncResult(str(task_id))
+        return {
+            "task_id": str(task_id),
+            "status": task.state,
+            "result": task.result if task.successful() else None,
+        }
+    except (RedisError, OperationalError):
+        raise HTTPException(status_code=503, detail="Task results temporarily unavailable") from None
